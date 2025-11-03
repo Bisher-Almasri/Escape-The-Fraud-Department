@@ -26,6 +26,7 @@ public class PlayerMovement : MonoBehaviour
     [Header("Sprint Settings")]
     public float sprintMultiplier = 1.5f;
     private bool isSprinting;
+    public bool canSprint = false;
     public float airControlMultiplier = 0.4f;
 
     [Header("Crouch Settings")]
@@ -54,6 +55,17 @@ public class PlayerMovement : MonoBehaviour
         col = GetComponent<CapsuleCollider>();
         controls = new PlayerControl();
 
+        PhysicsMaterial mat = new()
+        {
+            bounceCombine = PhysicsMaterialCombine.Average,
+            bounciness = 0f,
+            frictionCombine = PhysicsMaterialCombine.Minimum,
+            dynamicFriction = 0f,
+            staticFriction = 0f
+        };
+
+        gameObject.GetComponent<CapsuleCollider>().material = mat;
+
         controls.Player.Move.performed += ctx => movementInput = ctx.ReadValue<Vector2>();
         controls.Player.Move.canceled += _ => movementInput = Vector2.zero;
         controls.Player.Look.performed += ctx => lookInput = ctx.ReadValue<Vector2>();
@@ -61,8 +73,11 @@ public class PlayerMovement : MonoBehaviour
 
         controls.Player.Jump.performed += _ => jumpPressed = true;
 
-        controls.Player.Sprint.started += _ => StartCrouch();
-        controls.Player.Sprint.canceled += _ => StopCrouch();
+        controls.Player.Sprint.started += _ =>  isSprinting = canSprint;
+        controls.Player.Sprint.canceled += _ => isSprinting = false;
+        
+        controls.Player.Crouch.started += _ => StartCrouch();
+        controls.Player.Crouch.canceled += _ => StopCrouch();
 
         crouchHeight = col.height / crouchShrink;
         standingHeight = col.height;
@@ -155,7 +170,7 @@ public class PlayerMovement : MonoBehaviour
 
         bool isMoving = movementInput.magnitude > 0.1f && isGrounded();
 
-        if (isMoving)
+        if (isMoving && !isCrouching) 
         {
             bobTimer += Time.deltaTime * bobSpeed * (isSprinting ? 1.5f : 1f);
             float bobX = Mathf.Sin(bobTimer) * bobAmount;

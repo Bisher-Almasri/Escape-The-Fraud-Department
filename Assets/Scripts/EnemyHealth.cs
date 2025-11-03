@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections;
+using UnityEngine.SceneManagement;
 
-[RequireComponent(typeof(Renderer))]
 public class EnemyHealth : MonoBehaviour
 {
     public float maxHealth = 100f;
@@ -13,7 +13,9 @@ public class EnemyHealth : MonoBehaviour
     {
         currentHealth = maxHealth;
 
-        rend = GetComponent<Renderer>();
+        GameObject plane = transform.Find("Plane").gameObject;
+
+        rend = plane.GetComponent<Renderer>();
         if (rend != null)
             originalColor = rend.material.color;
     }
@@ -57,6 +59,6 @@ public class EnemyHealth : MonoBehaviour
     private void Die()
     {
         Debug.Log($"{gameObject.name} has died.");
-        Destroy(gameObject);
+        Destroy(gameObject.transform.parent.gameObject);
     }
 }

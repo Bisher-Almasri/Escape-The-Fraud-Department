@@ -1,68 +1,66 @@
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.SceneManagement;
 
+[RequireComponent(typeof(NavMeshAgent))]
 public class AI : MonoBehaviour
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     public Transform player;
-    public float moveSpeed = 5f;      // Movement speed
-    public float rotationSpeed = 5f;  // Rotation smoothness
+    public float updatePathInterval = 0.5f;
+    public float moveSpeed = 3.5f;
 
-    void Start()
+    private NavMeshAgent agent;
+    private float nextUpdateTime;
+    private GameObject plane;
+
+    void Awake()
     {
-        
+        agent = GetComponent<NavMeshAgent>();
+
+        if (transform.childCount > 0)
+            plane = transform.GetChild(0).gameObject;
+        else
+            Debug.LogWarning("AI has no child plane!");
+
+        agent.speed = moveSpeed;
+        agent.angularSpeed = 120f;
+        agent.acceleration = 8f;
+        agent.stoppingDistance = 1.2f;
     }
 
-    // Update is called once per frame
     void Update()
     {
         FollowPlayer();
+
+        if (plane != null)
+        {
+            var localRot = plane.transform.localEulerAngles;
+            localRot.x = 90f;
+            localRot.y = 0f;
+            localRot.z = 0f;
+            plane.transform.localEulerAngles = localRot;
+        }
     }
 
     private void FollowPlayer()
     {
         if (player == null) return;
 
-        transform.position = Vector3.MoveTowards(
-            transform.position,
-            player.position,
-            moveSpeed * Time.deltaTime
-        );
-
-        Vector3 direction = player.position - transform.position;
-        direction.y = 0;
-
-        if (direction.sqrMagnitude > 0.001f)
+        if (Time.time >= nextUpdateTime)
         {
-            Quaternion targetRotation = Quaternion.LookRotation(direction);
-            Vector3 euler = targetRotation.eulerAngles;
-            euler.x = 90f;
-            euler.z = 0f;
-            targetRotation = Quaternion.Euler(euler);
-
-            transform.rotation = Quaternion.Slerp(
-                transform.rotation,
-                targetRotation,
-                rotationSpeed * Time.deltaTime
-            );
-
-            transform.rotation = Quaternion.Slerp(
-                transform.rotation,
-                targetRotation,
-                rotationSpeed * Time.deltaTime
-            );
+            agent.SetDestination(player.position);
+            nextUpdateTime = Time.time + updatePathInterval;
         }
-    }
 
-    void OnCollisionEnter(Collision collision)
-    {
-        foreach (ContactPoint contact in collision.contacts)
+        if (agent.velocity.sqrMagnitude > 0.1f)
         {
-            if (contact.otherCollider.CompareTag("Player"))
-            {
-                Debug.Log("AI collided with Player!");
-                SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-            }
+            Quaternion lookRot = Quaternion.LookRotation(agent.velocity.normalized);
+            Vector3 euler = lookRot.eulerAngles;
+            euler.x = 0f;
+            euler.z = 0f;
+            lookRot = Quaternion.Euler(euler);
+
+            transform.rotation = Quaternion.Slerp(transform.rotation, lookRot, Time.deltaTime * 5f);
         }
     }
 }
